@@ -3,3 +3,6 @@
 *.tfstate.*
 .venv/
 __pycache__/
+
+# temp
+.github/
