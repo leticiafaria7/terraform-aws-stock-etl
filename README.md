@@ -7,17 +7,17 @@
 *O objetivo do projeto é construir um pipeline completo de dados para **extrair, processar, carregar e analisar** dados das ações que compõem o índice Ibovespa no momento de construção do projeto (março/2026).*
 
 > ### AWS
-O projeto foi provisionado utilizando os serviços do ecossistema da AWS:
-- S3: Data Lake que contém os buckets para armazenar os dados nas camadas raw e refined
-- Glue: Para construir a ETL (extração dos dados, transformações para consistência e carregamento na camada refined) - automatiza o processo de preparação e combinação dos dados
-- Lambda: Para configurar e executar o runtime dos códigos (horário e frequência de execução)
-- Eventbrigde: Para definir a frequência e horários de execução das etapas
-- Athena: Para analisar os dados obtidos
+O projeto foi provisionado utilizando os serviços do ecossistema da [Amazon Web Services - AWS](https://aws.amazon.com/pt/):
+- **S3:** Data Lake que contém os buckets para armazenar os dados nas camadas raw e refined
+- **Glue:** Para construir a ETL (extração dos dados, transformações para consistência e carregamento na camada refined) - automatiza o processo de preparação e combinação dos dados
+- **Lambda:** Para configurar e executar o runtime dos códigos (horário e frequência de execução)
+- **Eventbrigde:** Para definir a frequência e horários de execução das etapas
+- **Athena:** Para analisar os dados obtidos
 
 > ### Terraform
-Para garantir que o processo de construção da infraestrurura não seja perdido, foi escolhido o uso do **Terraform** para a execução do projeto.
+Para garantir que o processo de construção da infraestrutura não seja perdido, foi escolhido o uso do **Terraform** para a execução do projeto.
 
-O Terraform é uma ferramenta de **IaC (Infraesturura como Código)**, que permite construir todo o processo de ETL na forma de código, desde o scraping até a disponibilização dos dados. Isto é vantajoso por 2 motivos:
+O [Terraform](https://developer.hashicorp.com/terraform) é uma ferramenta de **IaC (Infraesturura como Código)**, que permite construir todo o processo de ETL na forma de código, desde o scraping até a disponibilização dos dados.<br>Algumas vantagens do uso do Terraform:
 - Permite documentação do processo
 - Evita que as etapas executadas na AWS (caso fossem realizadas de forma low code, "arrastando caixinhas" ou preenchendo os campos dos formulários) sejam perdidas - evita retrabalhos
 - Garante reprodutibilidade e melhoria contínua (possibilita refatoração do código e adição de novas funcionalidades)
@@ -27,7 +27,7 @@ Uma etapa importante do projeto é o entendimento dos conceitos relacionados ao 
 
 ![One Page | Mercado Financeiro](diagrams/one_page_bolsa.png)
 
-> ### Tabelas a serem ingestadas
+> ### Tabelas a serem ingestadas no processo de ETL
 
 Sabendo destes conceitos, temos a necessidade dos seguintes dados, disponibilizados pelas seguintes tabelas (que se relacionam a partir do Ticker (código) da ação):
 - **Dimensão (características):** Tabela com as características de cada ação (nome da empresa, setor de atuação, tipo de ação, segmento da ação, % de participação na composição do índice). Fontes de dados:
@@ -39,6 +39,7 @@ Sabendo destes conceitos, temos a necessidade dos seguintes dados, disponibiliza
 ## ⚙️ Funcionalidades
 
 - Web Scraping dos dados do Ibovespa (etapa executada com frequência determinada no Lambda)
+- Configuração de horário e frequência de execução da rotina de ETL (com Eventbridge)
 - Ingestão dos dados brutos, particionados por dia (no S3)
 - Transformação dos dados (orquestrada no Glue)
   - Renomear colunas
@@ -60,11 +61,12 @@ terraform-aws-stock-etl/
 ├── diagrams/
 │   ├── plano_arquitetural.png
 │   └── one_page_bolsa.png
+├── local_tests/
 ├── src/
 │   ├── etl/
-│   │   ├── extract.py
-│   │   ├── transform.py
-│   │   └── load.py
+│   │   ├── glue-job-extract.py
+│   │   ├── glue-job-transform.py
+│   │   └── glue-job-load.py
 │   └── lambda/
 │       └── lambda_function.py
 ├── infra/
@@ -107,12 +109,57 @@ terraform-aws-stock-etl/
 
 ## ✅ Etapas de execução
 > ⚙️ Em preenchimento
+
+> ### Testes locais da ETL das tabelas a serem ingestadas
+- Download das tabelas disponíveis nos links da seção [Tabelas a serem ingestadas](#tabelas-a-serem-ingestadas-no-processo-de-etl)
+  - Tabelas com os ativos no momento do projeto disponíveis em `local_tests/raw/`
+- Pré-processamento e join para gerar a tabela dimensão
+  - Notebook `local_tests/tratar_lista_empresas.ipynb`
+  - Persiste tabela em `local_tests/refined/ativos_ibov.xlsx`
+- Função para executar o scraping dos valores das ações → `local_tests/main.py`
+- Notebook para testes dos dados obtidos → `local_tests/testes_scraped_data.ipynb`
+
+> ### Etapas manuais na AWS
 - Criação de uma conta na AWS
-- Instalação do terraform localmente
+- Criação do bucket no S3 → Chamar o bucket no código do terraform
+- Criação do usuário para usar as credenciais e criar a [IAM Role](#-sobre-a-iam-role)
+
+> ### Construção do pipeline com Terraform (IaC)
+- [Instalação do terraform](https://developer.hashicorp.com/terraform/install) localmente
+  - Download do .exe
+  - Adicionar nas variáveis de ambiente da máquina para usar os comandos
 - ...
-- Esteira de CI/CD (Continuous Integration / Continuous Delivery)
-  - CI valida o código (terraform validate)
-  - CD faz o deploy (terraform apply)
+- Esteira de CI/CD (Continuous Integration / Continuous Delivery) com GitHub Workflows
+  - CI valida o código - `terraform validate`
+  - CD faz o deploy - `terraform apply`
+
+## 💡 Sobre a IAM Role
+Não é possível usar uma conta root para provisionar recursos na AWS usando o terraform - é necessário criar um usuário com a conta root<br>
+
+**Etapas para criar um usuário para usar credenciais na criação da Role em `infra/modules/iam/main.tf`:**<br>Console AWS → IAM → [menu esquerdo] Users → [botão laranja] Create user → definir nome → next → attach policies directly → selecionar AdministratorAccess → Next → Create user → Clicar no usuário criado → Security credentials (usar essas credenciais para provisionar recursos da AWS usando terraform) → Create access key → Other → Next → Create access key → Download .csv file
+
+No Windows: 
+- colocar as credenciais em `C:\Users\SEU_USUARIO\.aws\credentials`
+  ```
+  aws_access_key_id = <access_key_id>
+  aws_secret_access_key = <secret_access_key>
+  ```
+
+- criar o arquivo `C:\Users\SEU_USUARIO\.aws\config`
+  ```
+  region = us-east-1
+  output = json
+  ```
+
+Ao executar os comandos, o terraform automaticamente lê o `.aws/credentials` e as variáveis de ambiente<br>
+
+Para criar a role:
+- No terminal: navegar até a pasta `iam/`
+- Executar o comando `terraform init`
+- `terraform plan` lista todos os recursos que estão declarados no main.tf da pasta `iam/`
+
+No **GitHub Secrets**: Settings → Secrets → Actions → Configurar `AWS_ACCESS_KEY_ID` e `AWS_SECRET_ACCESS_KEY`<br>
+
 
 ## 🚀 Evolução do projeto
 > ⚙️ Em preenchimento

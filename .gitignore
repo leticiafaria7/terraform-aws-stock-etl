@@ -1,8 +1,17 @@
+# terraform files
 .terraform/
 *.tfstate
 *.tfstate.*
-.venv/
+*.hcl
+
+# python files
 __pycache__/
 
 # temp
 .github/
+
+# virtual environments
+venv/
+
+# scrap local
+scraped/
