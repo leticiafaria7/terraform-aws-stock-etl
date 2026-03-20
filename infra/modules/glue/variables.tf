@@ -1,9 +1,9 @@
 variable "role_name" {
-    default = ""
+    default = "ibov_etl_role"
 }
 
 variable "script_location" {
-    default = "s3://<bucket>/scripts/"
+    default = "s3://bucket-ibov-etl-095931688934/scripts/"
 }
 
 variable "default_arguments" {

@@ -17,7 +17,7 @@ O projeto foi provisionado utilizando os serviços do ecossistema da [Amazon Web
 > ### Terraform
 Para garantir que o processo de construção da infraestrutura não seja perdido, foi escolhido o uso do **Terraform** para a execução do projeto.
 
-O [Terraform](https://developer.hashicorp.com/terraform) é uma ferramenta de **IaC (Infraesturura como Código)**, que permite construir todo o processo de ETL na forma de código, desde o scraping até a disponibilização dos dados.<br>Algumas vantagens do uso do Terraform:
+O [Terraform](https://developer.hashicorp.com/terraform) é uma ferramenta de **IaC (Infraesturura como Código)**, que permite provisionar recursos de um pipeline de ETL em uma cloud, nesse caso, na AWS. Portanto, ele permite construir todo o processo de ETL na forma de código, desde o scraping até a disponibilização dos dados.<br>Algumas vantagens do uso do Terraform:
 - Permite documentação do processo
 - Evita que as etapas executadas na AWS (caso fossem realizadas de forma low code, "arrastando caixinhas" ou preenchendo os campos dos formulários) sejam perdidas - evita retrabalhos
 - Garante reprodutibilidade e melhoria contínua (possibilita refatoração do código e adição de novas funcionalidades)
@@ -58,10 +58,6 @@ terraform-aws-stock-etl/
 │   └── workflows/
 │       ├── ci_cd.yaml
 │       └── terraform_pipeline.yaml
-├── diagrams/
-│   ├── plano_arquitetural.png
-│   └── one_page_bolsa.png
-├── local_tests/
 ├── src/
 │   ├── etl/
 │   │   ├── glue-job-extract.py
@@ -72,17 +68,12 @@ terraform-aws-stock-etl/
 ├── infra/
 │   ├── modules/
 │   │   ├── s3/
-│   │   │   ├── main.tf
-│   │   │   ├── variables.tf
-│   │   │   └── outputs.tf
+│   │   │   └── main.tf
 │   │   ├── iam/
-│   │   │   ├── main.tf
-│   │   │   ├── variables.tf
-│   │   │   └── outputs.tf
+│   │   │   └── main.tf
 │   │   ├── glue/
 │   │   │   ├── main.tf
-│   │   │   ├── variables.tf
-│   │   │   └── outputs.tf
+│   │   │   └── variables.tf
 │   │   ├── lambda/
 │   │   │   ├── main.tf
 │   │   │   ├── variables.tf
@@ -103,6 +94,10 @@ terraform-aws-stock-etl/
 │           ├── backend.tf
 │           ├── versions.tf
 │           └── providers.tf
+├── diagrams/
+│   ├── plano_arquitetural.png
+│   └── one_page_bolsa.png
+├── local_tests/
 ├── README.md
 └── requirements.txt
 ```
@@ -110,7 +105,7 @@ terraform-aws-stock-etl/
 ## ✅ Etapas de execução
 > ⚙️ Em preenchimento
 
-> ### Testes locais da ETL das tabelas a serem ingestadas
+> ### 1. Testes locais da ETL das tabelas a serem ingestadas
 - Download das tabelas disponíveis nos links da seção [Tabelas a serem ingestadas](#tabelas-a-serem-ingestadas-no-processo-de-etl)
   - Tabelas com os ativos no momento do projeto disponíveis em `local_tests/raw/`
 - Pré-processamento e join para gerar a tabela dimensão
@@ -119,12 +114,11 @@ terraform-aws-stock-etl/
 - Função para executar o scraping dos valores das ações → `local_tests/main.py`
 - Notebook para testes dos dados obtidos → `local_tests/testes_scraped_data.ipynb`
 
-> ### Etapas manuais na AWS
+> ### 2. Etapas manuais na AWS
 - Criação de uma conta na AWS
-- Criação do bucket no S3 → Chamar o bucket no código do terraform
 - Criação do usuário para usar as credenciais e criar a [IAM Role](#-sobre-a-iam-role)
 
-> ### Construção do pipeline com Terraform (IaC)
+> ### 3. Construção do pipeline ETL com Terraform (IaC)
 - [Instalação do terraform](https://developer.hashicorp.com/terraform/install) localmente
   - Download do .exe
   - Adicionar nas variáveis de ambiente da máquina para usar os comandos
@@ -132,6 +126,13 @@ terraform-aws-stock-etl/
 - Esteira de CI/CD (Continuous Integration / Continuous Delivery) com GitHub Workflows
   - CI valida o código - `terraform validate`
   - CD faz o deploy - `terraform apply`
+
+Comandos do Terraform no terminal:
+- `cd <PATH>` ir para a pasta do serviço a ser provisionado
+  - `terraform init` → inicializa o terraform
+  - `terraform plan` → mostra os recursos que serão provisionados
+  - `terraform apply` → aplica o provisionamento dos recursos
+  - `terraform destroy` → destroi os recursos provisionados naquele serviço
 
 ## 💡 Sobre a IAM Role
 Não é possível usar uma conta root para provisionar recursos na AWS usando o terraform - é necessário criar um usuário com a conta root<br>
