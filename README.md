@@ -45,6 +45,7 @@ Sabendo destes conceitos, temos a necessidade dos seguintes dados, disponibiliza
   - Renomear colunas
   - Padronizar tipos das colunas
   - Agrupamentos numéricos, sumarização, contagem, soma
+- Orquestração dos serviços da AWS usando máquinas de estado (Step Functions)
 - Análise dos dados (no Athena)
 
 ## 📐 Arquitetura
@@ -56,48 +57,46 @@ Sabendo destes conceitos, temos a necessidade dos seguintes dados, disponibiliza
 terraform-aws-stock-etl/
 ├── .github/
 │   └── workflows/
-│       ├── ci_cd.yaml
-│       └── terraform_pipeline.yaml
-├── src/
-│   ├── etl/
-│   │   ├── glue-job-extract.py
-│   │   ├── glue-job-transform.py
-│   │   └── glue-job-load.py
-│   └── lambda/
-│       └── lambda_function.py
-├── infra/
-│   ├── modules/
-│   │   ├── s3/
-│   │   │   └── main.tf
-│   │   ├── iam/
-│   │   │   └── main.tf
-│   │   ├── glue/
-│   │   │   ├── main.tf
-│   │   │   └── variables.tf
-│   │   ├── lambda/
-│   │   │   ├── main.tf
-│   │   │   ├── variables.tf
-│   │   │   └── outputs.tf
-│   │   ├── eventbridge/
-│   │   │   ├── main.tf
-│   │   │   ├── variables.tf
-│   │   │   └── outputs.tf
-│   │   └── stepfunctions/
-│   │       ├── main.tf
-│   │       ├── variables.tf
-│   │       └── outputs.tf
-│   └── live/
-│       └── prod/
-│           ├── main.tf
-│           ├── variables.tf
-│           ├── terraform.tfvars
-│           ├── backend.tf
-│           ├── versions.tf
-│           └── providers.tf
+│       └── upload_extracted_data.yaml
 ├── diagrams/
 │   ├── plano_arquitetural.png
 │   └── one_page_bolsa.png
-├── local_tests/
+├── extract_local/
+│   ├── data/
+│   │   ├── daily/
+│   │   ├── raw/
+│   │   ├── refined/
+│   │   └── scraped/
+│   └── src/
+│       ├── airflow_daily.py
+│       ├── airflow_hourly.py
+│       ├── daily_concat_scraped_data.py
+│       ├── process_dimension_table.py
+│       └── web_scraping.py
+├── infra_aws/
+│   ├── s3/
+│   │   └── main.tf
+│   ├── iam/
+│   │   └── main.tf
+│   ├── glue/
+│   │   ├── glue-job-extract.py
+│   │   ├── glue-job-transform.py
+│   │   ├── main.tf
+│   │   └── variables.tf
+│   ├── lambda/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── lambda_function.py
+│   ├── stepfunctions/
+│   │   ├── main.tf
+│   │   └── variables.tf
+│   └── prod/
+│       ├── main.tf
+│       ├── variables.tf
+│       ├── terraform.tfvars
+│       ├── backend.tf
+│       └── providers.tf
+├── tests/
 ├── README.md
 └── requirements.txt
 ```
@@ -123,6 +122,7 @@ terraform-aws-stock-etl/
   - Download do .exe
   - Adicionar nas variáveis de ambiente da máquina para usar os comandos
 - ...
+- Orquestrar pipeline com StepFunctions
 - Esteira de CI/CD (Continuous Integration / Continuous Delivery) com GitHub Workflows
   - CI valida o código - `terraform validate`
   - CD faz o deploy - `terraform apply`
