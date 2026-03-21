@@ -10,8 +10,8 @@
 O projeto foi provisionado utilizando os serviços do ecossistema da [Amazon Web Services - AWS](https://aws.amazon.com/pt/):
 - **Amazon S3:** Data Lake que contém os buckets para armazenar os dados nas camadas raw e refined
 - **AWS Glue:** Para construir a ETL (extração dos dados, transformações para consistência e carregamento na camada refined) - automatiza o processo de preparação e combinação dos dados
-- **Lambda:** Acionado pela carga no bucket do S3, chama o job de ETL no Glue
-- **Step Functions:** Para orquestrar as etapas do processo
+- **AWS Lambda:** Acionado pela carga no bucket do S3, chama o job de ETL no Glue
+- **AWS Step Functions:** Para orquestrar as etapas do processo
 - **AWS Glue Data Catalog**: Para catalogar os dados processados
 - **Amazon Athena:** Para analisar os dados processados
 
