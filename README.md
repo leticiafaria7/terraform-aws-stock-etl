@@ -1,4 +1,4 @@
-# Pipeline Batch | Ibovespa
+# Pipeline ETL Batch | Ibovespa
 *Tech Challenge da Fase 2 do curso de [pós-graduação em Engenharia de Machine Learning FIAP](https://postech.fiap.com.br/curso/machine-learning-engineering/)*
 
 > 📽️ Vídeo com demonstração técnica do projeto - Em breve
@@ -38,18 +38,28 @@ Sabendo destes conceitos, temos a necessidade dos seguintes dados, disponibiliza
 
 ## ⚙️ Funcionalidades
 
-- Web Scraping dos dados do Ibovespa (etapa executada com frequência determinada no Lambda)
-- Configuração de horário e frequência de execução da rotina de ETL (com Eventbridge)
-- Ingestão dos dados brutos, particionados por dia (no S3)
-- Transformação dos dados (orquestrada no Glue)
+- Processamento da tabela dimensão com as características dos ativos do Ibovespa (etapa executada na máquina local)
+- **[Extract]** Web Scraping dos dados do Ibovespa (etapa executada na máquina local para evitar custos de processamento por hora na AWS)
+- Rotina no **Apache Airflow** de execução do web scraping dos dados (a cada 1h entre 08:00 e 20:00 em dias úteis)
+- Rotina no **Apache Airflow** para concatenar as tabelas do dia (1x por dia às 20:10 em dias úteis)
+- Rotina no **GitHub Workflow** para ingestão diária da tabela .parquet (com os valores das ações extraídos no dia) em bucket do **Amazon S3**
+- Criação de uma IAM Role para execução dos processos no **AWS Glue**
+- **[Transform e Load]** Transformação e carregamento dos dados executada com **AWS Glue**
   - Renomear colunas
-  - Padronizar tipos das colunas
-  - Agrupamentos numéricos, sumarização, contagem, soma
-- Orquestração dos serviços da AWS usando máquinas de estado (Step Functions)
-- Análise dos dados (no Athena)
+  - Criação de colunas auxiliares: dia da semana, abertura e fechamento do dia
+  - Agrupamento e sumarização: contagem, min, max, média, mediana e desvio padrão por ação e dia
+  - Cálculo do ganho ou perda % do dia
+  - Valores mínimos e máximos da semana
+- Catalogação dos dados no **AWS Glue Data Catalog**
+- Orquestração dos serviços da AWS usando máquinas de estado criadas com **AWS Step Functions**
+- Análise dos dados no **Amazon Athena**
 
 ## 📐 Arquitetura
-> Em breve
+> ⚠️ Ainda pode sofrer alterações
+
+Os objetos em vermelho são referentes aos 8 requisitos exigidos para completar o Tech Challenge
+
+![Arquitetura](diagrams/arquitetura.png)
 
 ## 📂 Estrutura do projeto
 > ⚙️ Em preenchimento
@@ -63,10 +73,10 @@ terraform-aws-stock-etl/
 │   └── one_page_bolsa.png
 ├── extract_local/
 │   ├── data/
-│   │   ├── daily/
-│   │   ├── raw/
-│   │   ├── refined/
-│   │   └── scraped/
+│   │   ├── daily/ (tabelas .parquet diárias)
+│   │   ├── raw/ (tabelas brutas para criar a tabela dimensão)
+│   │   ├── refined/ (tabela dimensão pronta)
+│   │   └── scraped/ (dados extraídos por hora)
 │   └── src/
 │       ├── airflow_daily.py
 │       ├── airflow_hourly.py
@@ -104,33 +114,36 @@ terraform-aws-stock-etl/
 ## ✅ Etapas de execução
 > ⚙️ Em preenchimento
 
-> ### 1. Testes locais da ETL das tabelas a serem ingestadas
+> ### 1. Processamento da tabela dimensão
 - Download das tabelas disponíveis nos links da seção [Tabelas a serem ingestadas](#tabelas-a-serem-ingestadas-no-processo-de-etl)
-  - Tabelas com os ativos no momento do projeto disponíveis em `local_tests/raw/`
+  - Tabelas com os ativos no momento do projeto disponíveis em `extract_local/data/raw/`
 - Pré-processamento e join para gerar a tabela dimensão
-  - Notebook `local_tests/tratar_lista_empresas.ipynb`
-  - Persiste tabela em `local_tests/refined/ativos_ibov.xlsx`
-- Função para executar o scraping dos valores das ações → `local_tests/main.py`
-- Notebook para testes dos dados obtidos → `local_tests/testes_scraped_data.ipynb`
+  - Módulo `extract_local/src/process_dimension_table.py`
+  - Persiste tabela em `extract_local/data/refined/ativos_ibov.parquet`
 
-> ### 2. Etapas manuais na AWS
+> ### 2. Web scraping dos valores das ações
+- Função para executar o scraping dos valores das ações → `extract_local/src/web_scraping.py`
+- Dados por hora são persistidos em formato .csv em `extract_local/data/scraped/` (não sobe para repositório)
+- Airflow para executar a cada 1h entre 08:00 e 20:00 em dias úteis
+- Airflow para concatenar as tabelas do dia (1x por dia às 20:10 em dias úteis) e persistir em .parquet
+
+> ### 3. Etapas manuais na AWS
 - Criação de uma conta na AWS
 - Criação do usuário para usar as credenciais e criar a [IAM Role](#-sobre-a-iam-role)
 
-> ### 3. Construção do pipeline ETL com Terraform (IaC)
+> ### 4. Construção do pipeline ETL com Terraform (IaC) e GitHub Workflows
 - [Instalação do terraform](https://developer.hashicorp.com/terraform/install) localmente
   - Download do .exe
   - Adicionar nas variáveis de ambiente da máquina para usar os comandos
 - ...
 - Orquestrar pipeline com StepFunctions
-- Esteira de CI/CD (Continuous Integration / Continuous Delivery) com GitHub Workflows
-  - CI valida o código - `terraform validate`
-  - CD faz o deploy - `terraform apply`
+- Workflow para subir as tabelas .parquet 1x por dia no bucket e acionar a lambda que chama o job de ETL no Glue
 
 Comandos do Terraform no terminal:
 - `cd <PATH>` ir para a pasta do serviço a ser provisionado
   - `terraform init` → inicializa o terraform
   - `terraform plan` → mostra os recursos que serão provisionados
+  - `terraform validate`→ valida o código
   - `terraform apply` → aplica o provisionamento dos recursos
   - `terraform destroy` → destroi os recursos provisionados naquele serviço
 
@@ -158,11 +171,12 @@ Para criar a role:
 - No terminal: navegar até a pasta `iam/`
 - Executar o comando `terraform init`
 - `terraform plan` lista todos os recursos que estão declarados no main.tf da pasta `iam/`
+- `terraform apply` para criar a IAM Role
 
 No **GitHub Secrets**: Settings → Secrets → Actions → Configurar `AWS_ACCESS_KEY_ID` e `AWS_SECRET_ACCESS_KEY`<br>
-
 
 ## 🚀 Evolução do projeto
 > ⚙️ Em preenchimento
 - Adicionar etapa automatizada de atualização da composição da carteira do Ibovespa
 - Adicionar etapa automatizada de atualização da lista de empresas listadas na B3
+- Esteira de CI/CD (Continuous Integration / Continuous Delivery) com GitHub Workflows para automatizar o provisionamento dos recursos usando Terraform
