@@ -22,5 +22,5 @@ resource "aws_s3_object" "scripts_path" {
 
 resource "aws_s3_object" "athena_path" {
     bucket = aws_s3_bucket.ibov_etl_bucket.bucket
-    key    = "athena/"
+    key    = "queries-athena/"
 }

@@ -8,16 +8,19 @@
 
 > ### AWS
 O projeto foi provisionado utilizando os serviços do ecossistema da [Amazon Web Services - AWS](https://aws.amazon.com/pt/):
-- **S3:** Data Lake que contém os buckets para armazenar os dados nas camadas raw e refined
-- **Glue:** Para construir a ETL (extração dos dados, transformações para consistência e carregamento na camada refined) - automatiza o processo de preparação e combinação dos dados
-- **Lambda:** Para configurar e executar o runtime dos códigos (horário e frequência de execução)
-- **Eventbrigde:** Para definir a frequência e horários de execução das etapas
-- **Athena:** Para analisar os dados obtidos
+- **Amazon S3:** Data Lake que contém os buckets para armazenar os dados nas camadas raw e refined
+- **AWS Glue:** Para construir a ETL (extração dos dados, transformações para consistência e carregamento na camada refined) - automatiza o processo de preparação e combinação dos dados
+- **Lambda:** Acionado pela carga no bucket do S3, chama o job de ETL no Glue
+- **Step Functions:** Para orquestrar as etapas do processo
+- **AWS Glue Data Catalog**: Para catalogar os dados processados
+- **Amazon Athena:** Para analisar os dados processados
 
 > ### Terraform
 Para garantir que o processo de construção da infraestrutura não seja perdido, foi escolhido o uso do **Terraform** para a execução do projeto.
 
-O [Terraform](https://developer.hashicorp.com/terraform) é uma ferramenta de **IaC (Infraesturura como Código)**, que permite provisionar recursos de um pipeline de ETL em uma cloud, nesse caso, na AWS. Portanto, ele permite construir todo o processo de ETL na forma de código, desde o scraping até a disponibilização dos dados.<br>Algumas vantagens do uso do Terraform:
+O [Terraform](https://developer.hashicorp.com/terraform) é uma ferramenta de **IaC (Infraesturura como Código)**, que permite provisionar recursos de um pipeline de ETL em uma cloud, nesse caso, na AWS. Ele permite construir todo o processo de ETL na forma de código, desde o scraping até a disponibilização dos dados.
+
+Algumas vantagens do uso do Terraform:
 - Permite documentação do processo
 - Evita que as etapas executadas na AWS (caso fossem realizadas de forma low code, "arrastando caixinhas" ou preenchendo os campos dos formulários) sejam perdidas - evita retrabalhos
 - Garante reprodutibilidade e melhoria contínua (possibilita refatoração do código e adição de novas funcionalidades)
