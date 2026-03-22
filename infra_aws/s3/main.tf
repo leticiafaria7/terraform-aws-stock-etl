@@ -9,18 +9,32 @@ resource "aws_s3_object" "raw_path" {
     key    = "raw/"
 }
 
+# pasta para tabelas trusted
+resource "aws_s3_object" "trusted_path" {
+    bucket = aws_s3_bucket.ibov_etl_bucket.bucket
+    key    = "trusted/"
+}
+
 # pasta para tabelas refined
 resource "aws_s3_object" "refined_path" {
     bucket = aws_s3_bucket.ibov_etl_bucket.bucket
     key    = "refined/"
 }
 
+# pasta para os scritps dos Jobs Glue
 resource "aws_s3_object" "scripts_path" {
     bucket = aws_s3_bucket.ibov_etl_bucket.bucket
-    key    = "scripts/"
+    key    = "scripts-glue-jobs/"
 }
 
+# pasta para colocar as queries a serem executadas no Athena
 resource "aws_s3_object" "athena_path" {
     bucket = aws_s3_bucket.ibov_etl_bucket.bucket
     key    = "queries-athena/"
+}
+
+# pasta para persistir os resultados das queries
+resource "aws_s3_object" "query_results_path" {
+    bucket = aws_s3_bucket.ibov_etl_bucket.bucket
+    key    = "query-results/"
 }

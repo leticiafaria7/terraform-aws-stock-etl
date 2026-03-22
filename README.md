@@ -60,7 +60,7 @@ Sabendo destes conceitos, temos a necessidade dos seguintes dados, disponibiliza
 ## 📐 Arquitetura
 > ⚠️ Ainda pode sofrer alterações
 
-Os objetos em vermelho são referentes aos 8 requisitos exigidos para completar o Tech Challenge
+Obs.: As tags objetos em vermelho são referentes aos 8 requisitos exigidos para completar o Tech Challenge
 
 ![Arquitetura](diagrams/arquitetura.png)
 
@@ -127,8 +127,11 @@ terraform-aws-stock-etl/
 > ### 2. Web scraping dos valores das ações
 - Função para executar o scraping dos valores das ações → `extract_local/src/web_scraping.py`
 - Dados por hora são persistidos em formato .csv em `extract_local/data/scraped/` (não sobe para repositório)
-- Airflow para executar a cada 1h entre 08:00 e 20:00 em dias úteis
-- Airflow para concatenar as tabelas do dia (1x por dia às 20:10 em dias úteis) e persistir em .parquet
+- Instalação do Apache Airflow (processo no Windows)
+  - Download do Docker
+  - Puxar container oficial do Airflow
+- Configurar Airflow para executar a cada 1h entre 08:00 e 20:00 em dias úteis
+- Configurar Airflow para concatenar as tabelas do dia (1x por dia às 20:10 em dias úteis) e persistir em .parquet
 
 > ### 3. Etapas manuais na AWS
 - Criação de uma conta na AWS
@@ -139,8 +142,11 @@ terraform-aws-stock-etl/
   - Download do .exe
   - Adicionar nas variáveis de ambiente da máquina para usar os comandos
 - ...
+- [Etapa manual] Fazer upload dos scripts dos jobs Glue no bucket S3
 - Orquestrar pipeline com StepFunctions
 - Workflow para subir as tabelas .parquet 1x por dia no bucket e acionar a lambda que chama o job de ETL no Glue
+
+> *Em breve: Fluxo da state machine gerado pela orquestração no Step Functions*
 
 Comandos do Terraform no terminal:
 - `cd <PATH>` ir para a pasta do serviço a ser provisionado
@@ -183,3 +189,4 @@ No **GitHub Secrets**: Settings → Secrets → Actions → Configurar `AWS_ACCE
 - Adicionar etapa automatizada de atualização da composição da carteira do Ibovespa
 - Adicionar etapa automatizada de atualização da lista de empresas listadas na B3
 - Esteira de CI/CD (Continuous Integration / Continuous Delivery) com GitHub Workflows para automatizar o provisionamento dos recursos usando Terraform
+- Processar o Web Scraping na AWS com EventBridge em vez de Airflow
