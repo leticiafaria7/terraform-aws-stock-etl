@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 # Obter lista de ativos
 # --------------------------------------------------------------------------------------------------------------------- #
 
-ativos_ibov = pd.read_excel('../data/refined/ativos_ibov.parquet')
+ativos_ibov = pd.read_parquet('../data/refined/ativos_ibov.parquet', engine = 'pyarrow')
 lista_ativos = list(ativos_ibov['ticker'].unique())
 
 # --------------------------------------------------------------------------------------------------------------------- #
@@ -56,22 +56,23 @@ def get_table_stocks(lista_ativos):
 
     filename = str(datetime.datetime.now())[:16].replace(' ', '-').replace(':', '-')
 
-    df_precos.to_parquet(f'../data/scraped/file-{filename}.parquet')
+    # df_precos.to_parquet(f'../data/scraped/file-{filename}.parquet')
+    df_precos.to_csv(f'../data/scraped/file-{filename}.csv')
 
 # --------------------------------------------------------------------------------------------------------------------- #
 # Execução
 # --------------------------------------------------------------------------------------------------------------------- #
 
 if __name__ == '__main__':
-    try:
-        get_table_stocks(lista_ativos)
-        print(f"Salvando arquivo: {str(datetime.datetime.now())[:16]}\n")
-    except Exception as e:
-        print(e)
-
-    # while True:
-    #     print(f"Início da execução: {str(datetime.datetime.now())[:16]}")
+    # try:
     #     get_table_stocks(lista_ativos)
     #     print(f"Salvando arquivo: {str(datetime.datetime.now())[:16]}\n")
-    #     time.sleep(60*60)
+    # except Exception as e:
+    #     print(e)
+
+    while True:
+        print(f"Início da execução: {str(datetime.datetime.now())[:16]}")
+        get_table_stocks(lista_ativos)
+        print(f"Salvando arquivo: {str(datetime.datetime.now())[:16]}\n")
+        time.sleep(60*60)
     
