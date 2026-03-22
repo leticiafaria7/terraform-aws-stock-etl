@@ -18,5 +18,4 @@ scraped/
 tests/
 
 # airflow
-airflow/logs/
-airflow/plugins/
+airflow/
