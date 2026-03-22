@@ -60,7 +60,7 @@ Sabendo destes conceitos, temos a necessidade dos seguintes dados, disponibiliza
 ## 📐 Arquitetura
 > ⚠️ Ainda pode sofrer alterações
 
-Obs.: As tags objetos em vermelho são referentes aos 8 requisitos exigidos para completar o Tech Challenge
+Obs.: As tags em vermelho são referentes aos 8 requisitos exigidos para completar o Tech Challenge
 
 ![Arquitetura](diagrams/arquitetura.png)
 
@@ -129,7 +129,14 @@ terraform-aws-stock-etl/
 - Dados por hora são persistidos em formato .csv em `extract_local/data/scraped/` (não sobe para repositório)
 - Instalação do Apache Airflow (processo no Windows)
   - Download do Docker
-  - Puxar container oficial do Airflow
+  - Abrir o Docker e mantê-lo aberto durante a execução
+  - Download do [`docker-compose.yaml`](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html) do site do Airflow
+  - Criar uma pasta `airflow`, colocar o `.yaml` baixado e criar um `.env` com o código `AIRFLOW_UID=50000`
+  - Dentro dessa pasta, criar também as pastas `logs/`, `dags/` e `plugins/`
+  - No terminal, navegar até a pasta e executar os comandos
+    - `docker-compose up airflow-init`
+    - `docker-compose up -d` (o `-d` é para rodar em background, e aí podemos fechar o terminal que o Airflow continua executando)
+  - Enquanto o último comando roda no terminal, acessar no navegador `localhost:8080` e entrar com o login `airflow` e senha também `airflow`
 - Configurar Airflow para executar a cada 1h entre 08:00 e 20:00 em dias úteis
 - Configurar Airflow para concatenar as tabelas do dia (1x por dia às 20:10 em dias úteis) e persistir em .parquet
 
@@ -186,7 +193,10 @@ No **GitHub Secrets**: Settings → Secrets → Actions → Configurar `AWS_ACCE
 
 ## 🚀 Evolução do projeto
 > ⚙️ Em preenchimento
-- Adicionar etapa automatizada de atualização da composição da carteira do Ibovespa
-- Adicionar etapa automatizada de atualização da lista de empresas listadas na B3
-- Esteira de CI/CD (Continuous Integration / Continuous Delivery) com GitHub Workflows para automatizar o provisionamento dos recursos usando Terraform
-- Processar o Web Scraping na AWS com EventBridge em vez de Airflow
+- Automação da geração da tabela dimensão dos ativos:
+  - Adicionar etapa automatizada de atualização da composição da carteira do Ibovespa
+  - Adicionar etapa automatizada de atualização da lista de empresas listadas na B3
+- Esteira de CI/CD (Continuous Integration / Continuous Delivery) com GitHub Workflows para automatizar todo o processo de provisionamento dos recursos usando Terraform
+- Processar o Web Scraping na AWS com EventBridge em vez de Airflow - Arquitetura alternativa abaixo:
+
+![Arquitetura alternativa](diagrams/arquitetura_alternativa.png)

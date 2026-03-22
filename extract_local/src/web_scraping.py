@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 # Obter lista de ativos
 # --------------------------------------------------------------------------------------------------------------------- #
 
-ativos_ibov = pd.read_excel('refined/ativos_ibov.xlsx')
+ativos_ibov = pd.read_excel('../data/refined/ativos_ibov.parquet')
 lista_ativos = list(ativos_ibov['ticker'].unique())
 
 # --------------------------------------------------------------------------------------------------------------------- #
@@ -55,18 +55,23 @@ def get_table_stocks(lista_ativos):
     df_precos = df_precos.reset_index(drop = True)
 
     filename = str(datetime.datetime.now())[:16].replace(' ', '-').replace(':', '-')
-    df_precos.to_csv(f'scraped/file-{filename}.csv')
+
+    df_precos.to_parquet(f'../data/scraped/file-{filename}.parquet')
 
 # --------------------------------------------------------------------------------------------------------------------- #
 # Execução
 # --------------------------------------------------------------------------------------------------------------------- #
 
 if __name__ == '__main__':
-
-    while True:
-        print(f"Início da execução: {str(datetime.datetime.now())[:16]}")
+    try:
         get_table_stocks(lista_ativos)
-        print(f"Salvando arquivo: {str(datetime.datetime.now())[:16]}")
-        print()
-        time.sleep(60*60)
+        print(f"Salvando arquivo: {str(datetime.datetime.now())[:16]}\n")
+    except Exception as e:
+        print(e)
+
+    # while True:
+    #     print(f"Início da execução: {str(datetime.datetime.now())[:16]}")
+    #     get_table_stocks(lista_ativos)
+    #     print(f"Salvando arquivo: {str(datetime.datetime.now())[:16]}\n")
+    #     time.sleep(60*60)
     

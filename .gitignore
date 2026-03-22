@@ -16,3 +16,7 @@ venv/
 # scrap local
 scraped/
 tests/
+
+# airflow
+airflow/logs/
+airflow/plugins/
