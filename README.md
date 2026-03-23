@@ -166,7 +166,25 @@ Comandos do Terraform no terminal:
 ## 💡 Sobre a IAM Role
 Não é possível usar uma conta root para provisionar recursos na AWS usando o terraform - é necessário criar um usuário com a conta root<br>
 
-**Etapas para criar um usuário para usar credenciais na criação da Role em `infra/modules/iam/main.tf`:**<br>Console AWS → IAM → [menu esquerdo] Users → [botão laranja] Create user → definir nome → next → attach policies directly → selecionar AdministratorAccess → Next → Create user → Clicar no usuário criado → Security credentials (usar essas credenciais para provisionar recursos da AWS usando terraform) → Create access key → Other → Next → Create access key → Download .csv file
+> ### 1. Criar manualmente (não precisa de chave de usuário de IAM Users)
+
+- Entrar em IAM → Roles → Create role
+- Etapa 1: Serviço da AWS, Use case: Glue
+- Etapa 2: Selecionar permissões: AWSGlueServiceRole, AmazonS3FullAccess, CloudWatchLogsFullAccess
+- Etapa 3: Nome role-glue-etl-ibov ou AWSGlueServiceRole-ibov-etl
+- Create role
+
+
+
+> ### 2. Criar usuário para utilizar chave de acesso em serviços de automação
+
+*Necessário para conceder permissões para ferramentas como Terraform, AWS CLI, Scripts Python (usando a lib boto3), CI/CD com GitHub Actions, etc*
+
+> Etapas para criar um usuário para usar credenciais na criação da Role:
+
+- Console AWS → IAM → [menu esquerdo] Users → [botão laranja] Create user → definir nome → next → attach policies directly → selecionar AdministratorAccess → Next → Create user → Clicar no usuário criado → Security credentials (usar essas credenciais para provisionar recursos da AWS usando terraform) → Create access key → Other → Next → Create access key → Download .csv file
+
+> Criando a role com Terraform:
 
 No Windows: 
 - colocar as credenciais em `C:\Users\SEU_USUARIO\.aws\credentials`
@@ -183,7 +201,6 @@ No Windows:
 
 Ao executar os comandos, o terraform automaticamente lê o `.aws/credentials` e as variáveis de ambiente<br>
 
-Para criar a role:
 - No terminal: navegar até a pasta `iam/`
 - Executar o comando `terraform init`
 - `terraform plan` lista todos os recursos que estão declarados no main.tf da pasta `iam/`

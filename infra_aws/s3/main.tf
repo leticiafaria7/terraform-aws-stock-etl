@@ -1,6 +1,6 @@
 # criar bucket s3
 resource "aws_s3_bucket" "ibov_etl_bucket" {
-    bucket = "bucket-ibov-etl-095931688934"
+    bucket = "teste-ibov-etl-095931688934"
 }
 
 # pasta para tabelas raw
@@ -10,10 +10,10 @@ resource "aws_s3_object" "raw_path" {
 }
 
 # pasta para tabelas trusted
-resource "aws_s3_object" "trusted_path" {
-    bucket = aws_s3_bucket.ibov_etl_bucket.bucket
-    key    = "trusted/"
-}
+# resource "aws_s3_object" "trusted_path" {
+#     bucket = aws_s3_bucket.ibov_etl_bucket.bucket
+#     key    = "trusted/"
+# }
 
 # pasta para tabelas refined
 resource "aws_s3_object" "refined_path" {
@@ -24,17 +24,22 @@ resource "aws_s3_object" "refined_path" {
 # pasta para os scritps dos Jobs Glue
 resource "aws_s3_object" "scripts_path" {
     bucket = aws_s3_bucket.ibov_etl_bucket.bucket
-    key    = "scripts-glue-jobs/"
+    key    = "glue-scripts/"
 }
 
 # pasta para colocar as queries a serem executadas no Athena
 resource "aws_s3_object" "athena_path" {
     bucket = aws_s3_bucket.ibov_etl_bucket.bucket
-    key    = "queries-athena/"
+    key    = "athena-queries/"
 }
 
 # pasta para persistir os resultados das queries
 resource "aws_s3_object" "query_results_path" {
     bucket = aws_s3_bucket.ibov_etl_bucket.bucket
-    key    = "query-results/"
+    key    = "queries-results/"
+}
+
+resource "aws_s3_object" "spark_logs_path" {
+    bucket = aws_s3_bucket.ibov_etl_bucket.bucket
+    key    = "spark-logs/"
 }

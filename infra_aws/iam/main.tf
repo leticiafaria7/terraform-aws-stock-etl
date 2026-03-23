@@ -1,34 +1,34 @@
 
-resource "aws_iam_role" "ibov_etl_role" {
-    name = "ibov_etl_role"
+## IAM Role para Glue
+# Permissões gerenciadas pela AWS: AAmazonS3FullAccess, AWSGlueServiceRole, CloudWatchLogsFullAccess
+resource "aws_iam_role" "role_glue_etl_ibov" {
+    name = "role_glue_etl_ibov"
 
     assume_role_policy = jsonencode({
         Version = ""
-        Statement = [
-            {
-                Effect = "Allow"
-                Action = "sts:AssumeRole"
-                Principal = {
-                    AWS = "095931688934"
-                }
-            },
-            {
-                Effect = "Allow"
-                Action = "sts:AssumeRole"
-                Principal = {
-                    Service = [
-                        "events.amazonaws.com",
-                        "states.amazonaws.com",
-                        "glue.amazonaws.com"
-                    ]
-                }
-            }
-        ]
     })
 }
 
-resource "aws_iam_policy_attachment" "power_user_access" {
-    name = "attach-power-user-access"
-    roles = [aws_iam_role.ibov_etl_role.name]
-    policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
+## IAM Role para Lambda
+# Permissões gerenciadas pela AWS: AWSLambdaBasicExecutionRole e AWSGlueConsoleFullAccess
+resource "aws_iam_role" "role_lambda_function" {
+    name = "role_lambda_function"
+
+    assume_role_policy = jsonencode(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "glue:StartJobRun",
+                        "glue:GetJobRun",
+                        "glue:GetJobRuns",
+                        "glue:BatchStopJobRun"
+                    ],
+                    "Resource": "*"
+                }
+            ]
+        }
+    )
 }
