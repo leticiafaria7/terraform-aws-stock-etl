@@ -103,7 +103,8 @@ terraform-aws-stock-etl/
 ```
 
 ## ✅ Etapas de execução
-⚠️ ***Observações:***
+> ⚠️ ***Observações:***
+
 - *A ideia inicial era montar todo o projeto em Terraform, mas devido a imprevistos durante a execução, o prazo ficou apertado e as etapas de provisionamento dos serviços da AWS precisaram ser executadas manualmente.<br>Os arquivos HCL (HashiCorp Configuration Language, com a extensão `.tf`) que já tinham sido escritos foram mantidos para documentação, mas na prática não foram executados.*
 - *Todos os serviços da AWS foram criados na Região us-east-1*
 
@@ -205,10 +206,10 @@ terraform-aws-stock-etl/
 ### Automação da etapa de Extract
 
 A etapa "extract" do ETL construido neste projeto ainda está muito manual. Exige intervenção humana, descrita na seção [Processamento do Web Scraping](#2-web-scraping-dos-valores-das-ações).<br>Foram desenhadas algumas formas alternativas de processamento do extract:
-- Usando **Apache Airflow** para agendar as execuções e **GitHub Workflows** para subir o arquivo do dia para o bucket<br><br>
+- Usando **Apache Airflow** para agendar as execuções e **GitHub Workflows** para subir o arquivo do dia para o bucket<br>
 <img src="diagrams/arquitetura_alt_airflow.png" width="30%">
 
-- Usando **Amazon EventBridge** para executar o processo de extract dentro do ecossistema da AWS (poderia aumentar os custos de processamento)<br><br>
+- Usando **Amazon EventBridge** para executar o processo de extract dentro do ecossistema da AWS (poderia aumentar os custos de processamento)<br>
 <img src="diagrams/arquitetura_alt_eventbridge.png" width="30%">
 
 ### Outras automações
