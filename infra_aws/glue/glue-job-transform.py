@@ -150,7 +150,7 @@ try:
         connection_type="s3",
         connection_options={
             "path": REFINED_PATH,
-            "partitionKeys": ["data"]
+            "partitionKeys": ["data", "ticker"]
         },
         format="parquet"
     )

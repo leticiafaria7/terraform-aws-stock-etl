@@ -64,12 +64,15 @@ def get_table_stocks(lista_ativos):
 # --------------------------------------------------------------------------------------------------------------------- #
 
 if __name__ == '__main__':
+    
+    # caso fosse executado com ferramenta de automação
     # try:
     #     get_table_stocks(lista_ativos)
     #     print(f"Salvando arquivo: {str(datetime.datetime.now())[:16]}\n")
     # except Exception as e:
     #     print(e)
 
+    # executar manualmente no terminal
     while True:
         print(f"Início da execução: {str(datetime.datetime.now())[:16]}")
         get_table_stocks(lista_ativos)

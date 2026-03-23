@@ -55,9 +55,8 @@ Sabendo destes conceitos, temos a necessidade dos seguintes dados, disponibiliza
 - Análise dos dados no **Amazon Athena**
 
 ## 📐 Arquitetura
-> ⚠️ Ainda pode sofrer alterações
 
-Obs.: As tags em vermelho são referentes aos 8 requisitos exigidos para completar o Tech Challenge
+*Obs.: As tags em vermelho são referentes aos 8 requisitos exigidos para completar o Tech Challenge*
 
 ![Arquitetura](diagrams/arquitetura.png)
 
@@ -104,25 +103,25 @@ terraform-aws-stock-etl/
 ```
 
 ## ✅ Etapas de execução
-> ### ⚠️ Observações
-- A ideia inicial era montar todo o projeto em Terraform, mas devido a imprevistos durante a execução, o prazo ficou apertado e as etapas de provisionamento dos serviços da AWS precisaram ser executadas manualmente.<br>Os arquivos HCL (HashiCorp Configuration Language, com a extensão `.tf`) que já tinham sido escritos foram mantidos para documentação, mas na prática não foram executados.
-- Todos os serviços da AWS foram criados na Região us-east-1
+⚠️ ***Observações:***
+- *A ideia inicial era montar todo o projeto em Terraform, mas devido a imprevistos durante a execução, o prazo ficou apertado e as etapas de provisionamento dos serviços da AWS precisaram ser executadas manualmente.<br>Os arquivos HCL (HashiCorp Configuration Language, com a extensão `.tf`) que já tinham sido escritos foram mantidos para documentação, mas na prática não foram executados.*
+- *Todos os serviços da AWS foram criados na Região us-east-1*
 
-> ### 1. Processamento da tabela dimensão
+### 1. [Local] Processamento da tabela dimensão
 - Download das tabelas disponíveis nos links da seção [Tabelas a serem ingestadas](#tabelas-a-serem-ingestadas-no-processo-de-etl)
   - Tabelas com os ativos no momento do projeto disponíveis em `extract_local/data/raw/`
 - Pré-processamento e join para gerar a tabela dimensão
   - Módulo `extract_local/src/process_dimension_table.py`
   - Persiste tabela em `extract_local/data/refined/ativos_ibov.parquet`
 
-> ### 2. Web scraping dos valores das ações
+### 2. [Local] Web scraping dos valores das ações
 - Função para executar o scraping dos valores das ações → `extract_local/src/web_scraping.py`
 - Dados por hora são persistidos em formato .csv em `extract_local/data/scraped/` (não sobe para repositório)
 - Executar o script `extract_local/src/web_scraping.py` todos os dias úteis pela manhã (8:00) e interromper a execução à noite (20:00) para pegar os valores de abertura e fechamento do dia
 - Executar o script `extract_local/src/daily_concat_scraped_data.py` após a interrupção da execução para concatenar os arquivos .csv do dia em um arquivo .parquet
 - Upload manual da tabela .parquet no bucket S3
 
-> ### 3. [Amazon S3] Criação do Bucket e estrutura de pastas
+### 3. [Amazon S3] Criação do Bucket e estrutura de pastas
 - No console da AWS, procurar por "S3"
 - Ir no botão laranja "Criar bucket"
 - Tipo de bucket "Propósito geral", Bucket namespace "Global namespace"
@@ -133,7 +132,7 @@ terraform-aws-stock-etl/
   - `dim/` (para persistir a tabela dimensão)
   - `ativos_ibov_fp/` (para apontar a persistência das tabelas fato processadas)
 
-> ### 4. [AWS IAM] Criação das Roles para permissões do Glue e do Lambda
+### 4. [AWS IAM] Criação das Roles para permissões do Glue e do Lambda
 - Entrar em IAM → Roles → Create role
 - IAM Role para **Glue**
   - Etapa 1: Serviço da AWS, Use case: Glue
@@ -148,27 +147,52 @@ terraform-aws-stock-etl/
   - Etapa 3: Nome `role-lambda-function`
   - Create role
 
-### 5. [AWS Lambda] ⚙️
+### 5. [AWS Lambda] Aciona a execução do job Glue ao upload de arquivo no bucket S3
 
-- Criação da função
+- Entrar em Lambda → Funções → Criar função
+- Criar do zero, dar um nome à função (no projeto, foi usado `call-glue-job-transform`)
+- Em "alterar a função de execução padrão", ir em usar outro perfil e escolher a IAM Role criada para a função Lambda e criar a função
 - Configuração do código - script disponível em `infra_aws/lambda/lambda_function.py`
-- Configuração das variáveis de ambiente
-- Configuração das permissões
-- DEPLOY do código
-- Ver logs de execução no **Amazon CloudWatch**
+- No bucket criado no S3:
+  - ir em "Propriedades"
+  - criar notificações de eventos
+  - colocar prefixo "raw/" e sufixo ".parquet"
+  - marcar "Todos os eventos de criação de objeto"
+  - colocar como destino a função do lambda criada
+- Voltar para a função Lambda, ir em Configuração → variáveis de ambiente
+  - definir RAW_PATH e REFINED_PATH (URI das respectivas pastas do bucket S3 - s3://<bucket>/pasta/)
+- Na parte do código, clicar em "Deploy" no menu esquerdo
+- OS logs de execução poderão ser vistos no **Amazon CloudWatch**
 
-### 6. [AWS Glue] ⚙️
+### 6. [AWS Glue] Transformação e carregamento dos dados
 
-- Criação do database
-- Criação da tabela dimensão no Crawler
-- Criação da tabela fato no Crawler
-- Criação do job ETL - script disponível em `infra_aws/glue/glue-job-transform.py`
-  - Listar transformações
-- Configuração dos Job details
-- Configuração das variáveis de ambiente
-- Teste de execução
+- No console da AWS, procurar por "Glue"
+- No menu esquerdo, ir em Databases → Criar database → nome usado foi `db_refined`
+- No menu esquerdo do Glue, ir em Crawlers → Create Crawler → criar o `crawler-tabela-dim-ativos-ibov` para subir a **tabela dimensão** para o Data Catalog
+  - apontar para a pasta refined/ativos_ibov_dim/ do bucket (na pasta apontada não pode ter nada além da tabela)
+  - selecionar a IAM Role criada para o Glue
+  - selecionar a database db_refined e criar o crawler
+  - após criado, o crawler precisa ser executado para jogar a tabela na database e aparecer no Athena
+- Repetir o processo de criação do crawler para a **tabela fato** (que vai receber as transformações do Glue)
+- No menu esquerdo do Glue, ir em Visual ETL → Script editor → Engine Spark → Start fresh → nome `glue_job_transform`
+- Colocar o script disponível em `infra_aws/glue/glue-job-transform.py`
+- Em Job details
+  - colocar a IAM Role criada para o Glue
+  - Type Spark
+  - Language Python 3
+  - Worker type "G 1X"
+  - Em advanded properties, apontar a pasta do bucket S3 para colocar os scripts, para a pasta dos spark-logs e definir os job parameters --RAW_PATH E --REFINED_PATH 
+- Em Runs, fazer um teste de execução clicando em "Run"
+  - Se der erro, ele aparece em vermelho nos Run details
 
-### 7. [Amazon Athena] ⚙️
+### 7. Execução do Job Glue
+
+- Ir no Bucket S3, pasta raw/
+- Clicar em "Carregar" e fazer upload do arquivo .parquet
+- O Lambda será acionado, e na parte "Runs" do job glue será possível ver a execução
+- Ao finalizar a execução, a tabela irá automaticamente para o Data Catalog
+
+### 8. [Amazon Athena] Consultas nas tabelas refinadas
 
 - Fonte de dados: AwsDataCatalog
 - Banco de dados: db_refined
@@ -178,16 +202,16 @@ terraform-aws-stock-etl/
 
 ## 🚀 Evolução do projeto
 
-> ### Automação do Extract
+### Automação da etapa de Extract
 
 A etapa "extract" do ETL construido neste projeto ainda está muito manual. Exige intervenção humana, descrita na seção [Processamento do Web Scraping](#2-web-scraping-dos-valores-das-ações).<br>Foram desenhadas algumas formas alternativas de processamento do extract:
-- Usando **Apache Airflow** para agendar as execuções e **GitHub Workflows** para subir o arquivo do dia para o bucket<br>
+- Usando **Apache Airflow** para agendar as execuções e **GitHub Workflows** para subir o arquivo do dia para o bucket<br><br>
 <img src="diagrams/arquitetura_alt_airflow.png" width="30%">
 
-- Usando **Amazon EventBridge** para executar o processo de extract dentro do ecossistema da AWS (poderia aumentar os custos de processamento)<br>
+- Usando **Amazon EventBridge** para executar o processo de extract dentro do ecossistema da AWS (poderia aumentar os custos de processamento)<br><br>
 <img src="diagrams/arquitetura_alt_eventbridge.png" width="30%">
 
-> ### Outras automações
+### Outras automações
 
 - Automação da geração da tabela dimensão dos ativos:
   - Adicionar etapa automatizada de atualização da composição da carteira do Ibovespa
@@ -196,7 +220,7 @@ A etapa "extract" do ETL construido neste projeto ainda está muito manual. Exig
 
 ## 🕯️ Documentações legadas
 
-> ### 1. Etapas para instalação do Apache Airflow no Windows:
+### 1. Etapas para instalação do Apache Airflow no Windows:
 - Download do Docker
 - Abrir o Docker e mantê-lo aberto durante a execução
 - Download do [`docker-compose.yaml`](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html) do site do Airflow
@@ -207,11 +231,11 @@ A etapa "extract" do ETL construido neste projeto ainda está muito manual. Exig
   - `docker-compose up -d` (o `-d` é para rodar em background, e aí podemos fechar o terminal que o Airflow continua executando)
 - Enquanto o último comando roda no terminal, acessar no navegador `localhost:8080` e entrar com o login `airflow` e senha também `airflow`
 
-> ### 2. Etapas para instalação do Terraform localmente
+### 2. Etapas para instalação do Terraform localmente
 - Download do .exe disponível [neste link](https://developer.hashicorp.com/terraform/install)
 - Adicionar nas variáveis de ambiente da máquina para usar os comandos
 
-> ### 3. Comandos do Terraform no terminal:
+### 3. Comandos do Terraform no terminal:
 - `cd <PATH>` ir para a pasta do serviço a ser provisionado
   - `terraform init` → inicializa o terraform
   - `terraform plan` → mostra os recursos que serão provisionados
@@ -219,15 +243,15 @@ A etapa "extract" do ETL construido neste projeto ainda está muito manual. Exig
   - `terraform apply` → aplica o provisionamento dos recursos
   - `terraform destroy` → destroi os recursos provisionados naquele serviço
 
-> ### 4. Criar IAM User para usar credenciais na criação da Role em serviços de automação
+### 4. Criar IAM User para usar credenciais na criação da Role em serviços de automação
 
 *Ao usar ferramentas como **Terraform, AWS CLI, Scripts Python (usando a lib boto3), CI/CD com GitHub Actions**,<br>é necessário criar um IAM User com a conta root e gerar access key para criar IAM Roles para executar os processos.*
 
-Etapas para criar o **IAM User**:
+> Etapas para criar o **IAM User**:
 
 - Console AWS → IAM → [menu esquerdo] Users → [botão laranja] Create user → definir nome → next → attach policies directly → selecionar AdministratorAccess → Next → Create user → Clicar no usuário criado → Security credentials (usar essas credenciais para provisionar recursos da AWS usando terraform) → Create access key → Other → Next → Create access key → Download .csv file
 
-No Windows: 
+> No Windows: 
 - colocar as credenciais em `C:\Users\SEU_USUARIO\.aws\credentials`
   ```
   aws_access_key_id = <access_key_id>
