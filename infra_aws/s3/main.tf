@@ -28,10 +28,10 @@ resource "aws_s3_object" "scripts_path" {
 }
 
 # pasta para colocar as queries a serem executadas no Athena
-resource "aws_s3_object" "athena_path" {
-    bucket = aws_s3_bucket.ibov_etl_bucket.bucket
-    key    = "athena-queries/"
-}
+# resource "aws_s3_object" "athena_path" {
+#     bucket = aws_s3_bucket.ibov_etl_bucket.bucket
+#     key    = "athena-queries/"
+# }
 
 # pasta para persistir os resultados das queries
 resource "aws_s3_object" "query_results_path" {

@@ -11,14 +11,12 @@ O projeto foi provisionado utilizando os serviços do ecossistema da [Amazon Web
 - **Amazon S3:** Data Lake que contém os buckets para armazenar os dados nas camadas raw e refined
 - **AWS Glue:** Para construir a ETL (extração dos dados, transformações para consistência e carregamento na camada refined) - automatiza o processo de preparação e combinação dos dados
 - **AWS Lambda:** Acionado pela carga no bucket do S3, chama o job de ETL no Glue
-- **AWS Step Functions:** Para orquestrar as etapas do processo
 - **AWS Glue Data Catalog**: Para catalogar os dados processados
 - **Amazon Athena:** Para analisar os dados processados
 
 > ### Terraform
-Para garantir que o processo de construção da infraestrutura não seja perdido, foi escolhido o uso do **Terraform** para a execução do projeto.
 
-O [Terraform](https://developer.hashicorp.com/terraform) é uma ferramenta de **IaC (Infraesturura como Código)**, que permite provisionar recursos de um pipeline de ETL em uma cloud, nesse caso, na AWS. Ele permite construir todo o processo de ETL na forma de código, desde o scraping até a disponibilização dos dados.
+O [Terraform](https://developer.hashicorp.com/terraform) é uma ferramenta de **IaC (Infraesturura como Código)**, que permite provisionar recursos de um pipeline de ETL em uma cloud, nesse caso, na AWS.<br>Ele permite construir todo o processo de ETL na forma de código, desde o scraping até a disponibilização dos dados.
 
 Algumas vantagens do uso do Terraform:
 - Permite documentação do processo
@@ -43,18 +41,17 @@ Sabendo destes conceitos, temos a necessidade dos seguintes dados, disponibiliza
 
 - Processamento da tabela dimensão com as características dos ativos do Ibovespa (etapa executada na máquina local)
 - **[Extract]** Web Scraping dos dados do Ibovespa (etapa executada na máquina local para evitar custos de processamento por hora na AWS)
-- Rotina no **Apache Airflow** de execução do web scraping dos dados (a cada 1h entre 08:00 e 20:00 em dias úteis)
-- Rotina no **Apache Airflow** para concatenar as tabelas do dia (1x por dia às 20:10 em dias úteis)
-- Rotina no **GitHub Workflow** para ingestão diária da tabela .parquet (com os valores das ações extraídos no dia) em bucket do **Amazon S3**
-- Criação de uma IAM Role para execução dos processos no **AWS Glue**
+- Criação de IAM Roles 
+  - IAM Role para execução dos processos no **AWS Glue**
+  - IAM Role para execução dos processos no **AWS Lambda**
 - **[Transform e Load]** Transformação e carregamento dos dados executada com **AWS Glue**
   - Renomear colunas
   - Criação de colunas auxiliares: dia da semana, abertura e fechamento do dia
   - Agrupamento e sumarização: contagem, min, max, média, mediana e desvio padrão por ação e dia
   - Cálculo do ganho ou perda % do dia
   - Valores mínimos e máximos da semana
+- Criação da tabela dimensão dos ativos com **Glue Crawler** para catalogar no **AWS Glue Data Catalog**
 - Catalogação dos dados no **AWS Glue Data Catalog**
-- Orquestração dos serviços da AWS usando máquinas de estado criadas com **AWS Step Functions**
 - Análise dos dados no **Amazon Athena**
 
 ## 📐 Arquitetura
@@ -65,14 +62,12 @@ Obs.: As tags em vermelho são referentes aos 8 requisitos exigidos para complet
 ![Arquitetura](diagrams/arquitetura.png)
 
 ## 📂 Estrutura do projeto
-> ⚙️ Em preenchimento
 ```
 terraform-aws-stock-etl/
-├── .github/
-│   └── workflows/
-│       └── upload_extracted_data.yaml
 ├── diagrams/
-│   ├── plano_arquitetural.png
+│   ├── arquitetura.png
+│   ├── arquitetura_alt_airflow.png
+│   ├── arquitetura_alt_eventbridge.png
 │   └── one_page_bolsa.png
 ├── extract_local/
 │   ├── data/
@@ -81,8 +76,7 @@ terraform-aws-stock-etl/
 │   │   ├── refined/ (tabela dimensão pronta)
 │   │   └── scraped/ (dados extraídos por hora)
 │   └── src/
-│       ├── airflow_daily.py
-│       ├── airflow_hourly.py
+│       ├── __init__.py
 │       ├── daily_concat_scraped_data.py
 │       ├── process_dimension_table.py
 │       └── web_scraping.py
@@ -92,30 +86,27 @@ terraform-aws-stock-etl/
 │   ├── iam/
 │   │   └── main.tf
 │   ├── glue/
-│   │   ├── glue-job-extract.py
 │   │   ├── glue-job-transform.py
 │   │   ├── main.tf
 │   │   └── variables.tf
 │   ├── lambda/
-│   │   ├── main.tf
 │   │   ├── variables.tf
 │   │   └── lambda_function.py
-│   ├── stepfunctions/
-│   │   ├── main.tf
-│   │   └── variables.tf
+│   ├── athena/
+│   │   ├── queries_dim.sql
+│   │   ├── queries_fp.sql
+│   │   └── join_dim_fp.sql
 │   └── prod/
-│       ├── main.tf
-│       ├── variables.tf
-│       ├── terraform.tfvars
-│       ├── backend.tf
 │       └── providers.tf
-├── tests/
+├── .gitignore
 ├── README.md
 └── requirements.txt
 ```
 
 ## ✅ Etapas de execução
-> ⚙️ Em preenchimento
+> ### ⚠️ Observações
+- A ideia inicial era montar todo o projeto em Terraform, mas devido a imprevistos durante a execução, o prazo ficou apertado e as etapas de provisionamento dos serviços da AWS precisaram ser executadas manualmente.<br>Os arquivos HCL (HashiCorp Configuration Language, com a extensão `.tf`) que já tinham sido escritos foram mantidos para documentação, mas na prática não foram executados.
+- Todos os serviços da AWS foram criados na Região us-east-1
 
 > ### 1. Processamento da tabela dimensão
 - Download das tabelas disponíveis nos links da seção [Tabelas a serem ingestadas](#tabelas-a-serem-ingestadas-no-processo-de-etl)
@@ -127,35 +118,100 @@ terraform-aws-stock-etl/
 > ### 2. Web scraping dos valores das ações
 - Função para executar o scraping dos valores das ações → `extract_local/src/web_scraping.py`
 - Dados por hora são persistidos em formato .csv em `extract_local/data/scraped/` (não sobe para repositório)
-- Instalação do Apache Airflow (processo no Windows)
-  - Download do Docker
-  - Abrir o Docker e mantê-lo aberto durante a execução
-  - Download do [`docker-compose.yaml`](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html) do site do Airflow
-  - Criar uma pasta `airflow`, colocar o `.yaml` baixado e criar um `.env` com o código `AIRFLOW_UID=50000`
-  - Dentro dessa pasta, criar também as pastas `logs/`, `dags/` e `plugins/`
-  - No terminal, navegar até a pasta e executar os comandos
-    - `docker-compose up airflow-init`
-    - `docker-compose up -d` (o `-d` é para rodar em background, e aí podemos fechar o terminal que o Airflow continua executando)
-  - Enquanto o último comando roda no terminal, acessar no navegador `localhost:8080` e entrar com o login `airflow` e senha também `airflow`
-- Configurar Airflow para executar a cada 1h entre 08:00 e 20:00 em dias úteis
-- Configurar Airflow para concatenar as tabelas do dia (1x por dia às 20:10 em dias úteis) e persistir em .parquet
+- Executar o script `extract_local/src/web_scraping.py` todos os dias úteis pela manhã (8:00) e interromper a execução à noite (20:00) para pegar os valores de abertura e fechamento do dia
+- Executar o script `extract_local/src/daily_concat_scraped_data.py` após a interrupção da execução para concatenar os arquivos .csv do dia em um arquivo .parquet
+- Upload manual da tabela .parquet no bucket S3
 
-> ### 3. Etapas manuais na AWS
-- Criação de uma conta na AWS
-- Criação do usuário para usar as credenciais e criar a [IAM Role](#-sobre-a-iam-role)
+> ### 3. [Amazon S3] Criação do Bucket e estrutura de pastas
+- No console da AWS, procurar por "S3"
+- Ir no botão laranja "Criar bucket"
+- Tipo de bucket "Propósito geral", Bucket namespace "Global namespace"
+- Definição do nome do bucket "teste-ibov-etl-<id_conta>
+- Demais configurações mantidas no default, clicar em "Criar bucket"
+- Dentro do bucket, foram criadas as pastas especificadas no arquivo `infra_aws/s3/main.tf`
+- Dentro da pasta `refined/`, foram criadas as subpastas:
+  - `dim/` (para persistir a tabela dimensão)
+  - `ativos_ibov_fp/` (para apontar a persistência das tabelas fato processadas)
 
-> ### 4. Construção do pipeline ETL com Terraform (IaC) e GitHub Workflows
-- [Instalação do terraform](https://developer.hashicorp.com/terraform/install) localmente
-  - Download do .exe
-  - Adicionar nas variáveis de ambiente da máquina para usar os comandos
-- ...
-- [Etapa manual] Fazer upload dos scripts dos jobs Glue no bucket S3
-- Orquestrar pipeline com StepFunctions
-- Workflow para subir as tabelas .parquet 1x por dia no bucket e acionar a lambda que chama o job de ETL no Glue
+> ### 4. [AWS IAM] Criação das Roles para permissões do Glue e do Lambda
+- Entrar em IAM → Roles → Create role
+- IAM Role para **Glue**
+  - Etapa 1: Serviço da AWS, Use case: Glue
+  - Etapa 2: Selecionar permissões: AWSGlueServiceRole, AmazonS3FullAccess, CloudWatchLogsFullAccess
+  - Etapa 3: Nome `role-glue-etl-ibov` (ou `AWSGlueServiceRole-ibov-etl` para ficar no padrão de nomes)
+  - Create role
+- IAM Role para **Lambda**
+  - Etapa 1: Serviço da AWS, Use case: Lambda
+  - Etapa 2:
+    - Selecionar permissões: AWSLambdaBasicExecutionRole, AWSGlueConsoleFullAccess
+    - Criar política com código, como está no arquivo `infra_aws/iam/main.tf`
+  - Etapa 3: Nome `role-lambda-function`
+  - Create role
 
-> *Em breve: Fluxo da state machine gerado pela orquestração no Step Functions*
+### 5. [AWS Lambda] ⚙️
 
-Comandos do Terraform no terminal:
+- Criação da função
+- Configuração do código - script disponível em `infra_aws/lambda/lambda_function.py`
+- Configuração das variáveis de ambiente
+- Configuração das permissões
+- DEPLOY do código
+- Ver logs de execução no **Amazon CloudWatch**
+
+### 6. [AWS Glue] ⚙️
+
+- Criação do database
+- Criação da tabela dimensão no Crawler
+- Criação da tabela fato no Crawler
+- Criação do job ETL - script disponível em `infra_aws/glue/glue-job-transform.py`
+  - Listar transformações
+- Configuração dos Job details
+- Configuração das variáveis de ambiente
+- Teste de execução
+
+### 7. [Amazon Athena] ⚙️
+
+- Fonte de dados: AwsDataCatalog
+- Banco de dados: db_refined
+- Clicar no refresh (botão 🔁)
+- Ver se as tabelas aparecem no menu esquerdo "Tabelas"
+- Executar as queries disponíveis em `infra_aws/athena/`
+
+## 🚀 Evolução do projeto
+
+> ### Automação do Extract
+
+A etapa "extract" do ETL construido neste projeto ainda está muito manual. Exige intervenção humana, descrita na seção [Processamento do Web Scraping](#2-web-scraping-dos-valores-das-ações).<br>Foram desenhadas algumas formas alternativas de processamento do extract:
+- Usando **Apache Airflow** para agendar as execuções e **GitHub Workflows** para subir o arquivo do dia para o bucket<br>
+<img src="diagrams/arquitetura_alt_airflow.png" width="30%">
+
+- Usando **Amazon EventBridge** para executar o processo de extract dentro do ecossistema da AWS (poderia aumentar os custos de processamento)<br>
+<img src="diagrams/arquitetura_alt_eventbridge.png" width="30%">
+
+> ### Outras automações
+
+- Automação da geração da tabela dimensão dos ativos:
+  - Adicionar etapa automatizada de atualização da composição da carteira do Ibovespa
+  - Adicionar etapa automatizada de atualização da lista de empresas listadas na B3
+- Esteira de CI/CD (Continuous Integration / Continuous Delivery) com GitHub Workflows para automatizar todo o processo de provisionamento dos recursos usando Terraform
+
+## 🕯️ Documentações legadas
+
+> ### 1. Etapas para instalação do Apache Airflow no Windows:
+- Download do Docker
+- Abrir o Docker e mantê-lo aberto durante a execução
+- Download do [`docker-compose.yaml`](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html) do site do Airflow
+- Criar uma pasta `airflow`, colocar o `.yaml` baixado e criar um `.env` com o código `AIRFLOW_UID=50000`
+- Dentro dessa pasta, criar também as pastas `logs/`, `dags/` e `plugins/`
+- No terminal, navegar até a pasta e executar os comandos
+  - `docker-compose up airflow-init`
+  - `docker-compose up -d` (o `-d` é para rodar em background, e aí podemos fechar o terminal que o Airflow continua executando)
+- Enquanto o último comando roda no terminal, acessar no navegador `localhost:8080` e entrar com o login `airflow` e senha também `airflow`
+
+> ### 2. Etapas para instalação do Terraform localmente
+- Download do .exe disponível [neste link](https://developer.hashicorp.com/terraform/install)
+- Adicionar nas variáveis de ambiente da máquina para usar os comandos
+
+> ### 3. Comandos do Terraform no terminal:
 - `cd <PATH>` ir para a pasta do serviço a ser provisionado
   - `terraform init` → inicializa o terraform
   - `terraform plan` → mostra os recursos que serão provisionados
@@ -163,28 +219,13 @@ Comandos do Terraform no terminal:
   - `terraform apply` → aplica o provisionamento dos recursos
   - `terraform destroy` → destroi os recursos provisionados naquele serviço
 
-## 💡 Sobre a IAM Role
-Não é possível usar uma conta root para provisionar recursos na AWS usando o terraform - é necessário criar um usuário com a conta root<br>
+> ### 4. Criar IAM User para usar credenciais na criação da Role em serviços de automação
 
-> ### 1. Criar manualmente (não precisa de chave de usuário de IAM Users)
+*Ao usar ferramentas como **Terraform, AWS CLI, Scripts Python (usando a lib boto3), CI/CD com GitHub Actions**,<br>é necessário criar um IAM User com a conta root e gerar access key para criar IAM Roles para executar os processos.*
 
-- Entrar em IAM → Roles → Create role
-- Etapa 1: Serviço da AWS, Use case: Glue
-- Etapa 2: Selecionar permissões: AWSGlueServiceRole, AmazonS3FullAccess, CloudWatchLogsFullAccess
-- Etapa 3: Nome role-glue-etl-ibov ou AWSGlueServiceRole-ibov-etl
-- Create role
-
-
-
-> ### 2. Criar usuário para utilizar chave de acesso em serviços de automação
-
-*Necessário para conceder permissões para ferramentas como Terraform, AWS CLI, Scripts Python (usando a lib boto3), CI/CD com GitHub Actions, etc*
-
-> Etapas para criar um usuário para usar credenciais na criação da Role:
+Etapas para criar o **IAM User**:
 
 - Console AWS → IAM → [menu esquerdo] Users → [botão laranja] Create user → definir nome → next → attach policies directly → selecionar AdministratorAccess → Next → Create user → Clicar no usuário criado → Security credentials (usar essas credenciais para provisionar recursos da AWS usando terraform) → Create access key → Other → Next → Create access key → Download .csv file
-
-> Criando a role com Terraform:
 
 No Windows: 
 - colocar as credenciais em `C:\Users\SEU_USUARIO\.aws\credentials`
@@ -199,6 +240,10 @@ No Windows:
   output = json
   ```
 
+No **GitHub Secrets**: Settings → Secrets → Actions → Configurar `AWS_ACCESS_KEY_ID` e `AWS_SECRET_ACCESS_KEY`<br>
+
+> Criando a role com Terraform:
+
 Ao executar os comandos, o terraform automaticamente lê o `.aws/credentials` e as variáveis de ambiente<br>
 
 - No terminal: navegar até a pasta `iam/`
@@ -206,14 +251,3 @@ Ao executar os comandos, o terraform automaticamente lê o `.aws/credentials` e 
 - `terraform plan` lista todos os recursos que estão declarados no main.tf da pasta `iam/`
 - `terraform apply` para criar a IAM Role
 
-No **GitHub Secrets**: Settings → Secrets → Actions → Configurar `AWS_ACCESS_KEY_ID` e `AWS_SECRET_ACCESS_KEY`<br>
-
-## 🚀 Evolução do projeto
-> ⚙️ Em preenchimento
-- Automação da geração da tabela dimensão dos ativos:
-  - Adicionar etapa automatizada de atualização da composição da carteira do Ibovespa
-  - Adicionar etapa automatizada de atualização da lista de empresas listadas na B3
-- Esteira de CI/CD (Continuous Integration / Continuous Delivery) com GitHub Workflows para automatizar todo o processo de provisionamento dos recursos usando Terraform
-- Processar o Web Scraping na AWS com EventBridge em vez de Airflow - Arquitetura alternativa abaixo:
-
-![Arquitetura alternativa](diagrams/arquitetura_alternativa.png)

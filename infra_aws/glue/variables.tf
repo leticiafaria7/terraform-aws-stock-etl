@@ -1,9 +1,9 @@
 variable "role_name" {
-    default = "ibov_etl_role"
+    default = "role_glue_etl_ibov"
 }
 
 variable "script_location" {
-    default = "s3://bucket-ibov-etl-095931688934/scripts/"
+    default = "s3://teste-ibov-etl-095931688934/glue-scripts/"
 }
 
 variable "default_arguments" {

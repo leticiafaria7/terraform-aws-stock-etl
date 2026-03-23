@@ -154,16 +154,6 @@ try:
         },
         format="parquet"
     )
-
-    glueContext.write_dynamic_frame.from_catalog(
-        frame=dyf,
-        database=DATABASE,
-        table_name=TABLE,
-        additional_options={
-            "enableUpdateCatalog": True,
-            "partitionKeys": ["data"]
-        }
-    )
     
     spark.sql(f"MSCK REPAIR TABLE {DATABASE}.{TABLE}")
 
