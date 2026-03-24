@@ -1,7 +1,7 @@
 # Pipeline ETL Batch | Ibovespa
 *Tech Challenge da Fase 2 do curso de [pós-graduação em Engenharia de Machine Learning FIAP](https://postech.fiap.com.br/curso/machine-learning-engineering/)*
 
-> 📽️ Vídeo com demonstração técnica do projeto - Em breve
+> 📽️ [Vídeo com demonstração técnica do projeto](https://youtu.be/uhozqDKvo1E)
 
 ## 🎯 Sobre o projeto
 *O objetivo do projeto é construir um pipeline completo de dados para **extrair, processar, carregar e analisar** dados das ações que compõem o índice Ibovespa no momento de construção do projeto (março/2026).*

@@ -57,7 +57,7 @@ def get_processed_dates():
         logger.error(f"Erro ao listar datas processadas: {e}")
         return set()
 
-try:
+def main():
     logger.info("Lendo dados RAW...")
 
     # lê todas as tabelas parquet dessa pasta e já concatena
@@ -82,9 +82,9 @@ try:
         logger.info(f"Datas já processadas: {processed_dates}")
         df = df.filter(~col("data").isin(list(processed_dates)))
 
-    if df.limit(1).count() == 0:
+    if df.rdd.isEmpty():
         logger.info("Nenhum dado novo para processar.")
-        sys.exit(0)
+        return
 
     # =========================
     # ABERTURA / FECHAMENTO
@@ -150,15 +150,18 @@ try:
         connection_type="s3",
         connection_options={
             "path": REFINED_PATH,
-            "partitionKeys": ["data", "ticker"]
+            "partitionKeys": ["data"]
         },
         format="parquet"
     )
-    
+
+    # Atualizar tabela no Data Catalog
     spark.sql(f"MSCK REPAIR TABLE {DATABASE}.{TABLE}")
 
     logger.info("Job finalizado com sucesso!")
 
+try:
+    main()
 except Exception as e:
     logger.error(f"Erro no job: {str(e)}")
     raise
